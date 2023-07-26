@@ -1,0 +1,62 @@
+version: "3.3"
+   
+services:
+  elk:
+    labels: 
+      nomin.service: "nomin_skeleton_elk"
+      nomin.description: "for indexing data"
+    image: elasticsearch:8.8.1
+    container_name: nomin_skeleton_elk
+    environment:
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
+      - xpack.security.enabled=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - 9200:9200
+      - 9300:9300
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+      - ../backups/elasticsearch:/usr/share/elasticsearch/backups
+
+  logstash:
+    labels: 
+      nomin.service: "nomin_skeleton_logstash"
+      nomin.description: "for logging data"
+    image: logstash:8.8.1
+    container_name: nomin_skeleton_logstash
+    links: 
+      - elk
+    depends_on:
+      - elk
+    ports:
+      # - "5000:5000"
+      - "9600:9600"
+    environment:
+      LS_JAVA_OPTS: "-Xmx256m -Xms256m"
+      xpack.monitoring.elasticsearch.hosts: "http://elk:9200"
+      xpack.monitoring.elasticsearch.url: "http://elk:9200"
+      ELASTICSEARCH_HOST: "elk:9200"
+
+
+  kibana:
+    labels:
+      nomin.service: "nomin_skeleton_kibana"
+      nomin.description: "Data visualisation and for log aggregation"
+    image: kibana:8.8.1
+    container_name: nomin_skeleton_kibana
+    ports:
+      - "5601:5601"
+    environment:
+      ELASTICSEARCH_HOSTS: http://elk:9200
+    links: 
+      - elk
+
+volumes:
+  static_volume: {}
+  esdata:
+    driver: local
